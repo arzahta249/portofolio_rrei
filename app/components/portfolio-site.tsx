@@ -1,6 +1,8 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { AiAssistant } from "./ai-assistant";
 import {
   Comment,
   Project,
@@ -11,17 +13,13 @@ import {
   starterProjects,
   toolkit,
 } from "../data/portfolio";
-
-function readStorage<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-
-  try {
-    const saved = window.localStorage.getItem(key);
-    return saved ? (JSON.parse(saved) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+import {
+  PROJECT_STORAGE_KEY,
+  getFeaturedProjects,
+  normalizeProjects,
+  readProjects,
+  readStorage,
+} from "../lib/portfolio-storage";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -41,18 +39,25 @@ export function PortfolioSite() {
   const [projects, setProjects] = useState<Project[]>(starterProjects);
   const [comments, setComments] = useState<Comment[]>(starterComments);
   const [isStorageReady, setIsStorageReady] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [preview, setPreview] = useState("");
+  const [galleryPreview, setGalleryPreview] = useState<string[]>([]);
+  const [videoPreview, setVideoPreview] = useState("");
   const [projectForm, setProjectForm] = useState({
     title: "",
     category: "Penulisan",
     description: "",
+    detail: "",
     image: "",
+    gallery: [] as string[],
+    videoUrl: "",
+    featured: true,
   });
   const [commentForm, setCommentForm] = useState({ name: "", message: "" });
 
   useEffect(() => {
     queueMicrotask(() => {
-      setProjects(readStorage("harum-projects", starterProjects));
+      setProjects(readProjects());
       setComments(readStorage("harum-comments", starterComments));
       setIsStorageReady(true);
     });
@@ -60,7 +65,7 @@ export function PortfolioSite() {
 
   useEffect(() => {
     if (!isStorageReady) return;
-    window.localStorage.setItem("harum-projects", JSON.stringify(projects));
+    window.localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects));
   }, [isStorageReady, projects]);
 
   useEffect(() => {
@@ -78,6 +83,8 @@ export function PortfolioSite() {
     [comments.length, projects.length],
   );
 
+  const featuredProjects = useMemo(() => getFeaturedProjects(projects), [projects]);
+
   function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -91,6 +98,38 @@ export function PortfolioSite() {
     reader.readAsDataURL(file);
   }
 
+  function handleGalleryUpload(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.readAsDataURL(file);
+          }),
+      ),
+    ).then((images) => {
+      setGalleryPreview(images);
+      setProjectForm((current) => ({ ...current, gallery: images }));
+    });
+  }
+
+  function handleVideoUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const video = String(reader.result);
+      setVideoPreview(file.name);
+      setProjectForm((current) => ({ ...current, videoUrl: video }));
+    };
+    reader.readAsDataURL(file);
+  }
+
   function addProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!projectForm.title.trim() || !projectForm.description.trim()) return;
@@ -100,15 +139,30 @@ export function PortfolioSite() {
       title: projectForm.title.trim(),
       category: projectForm.category,
       description: projectForm.description.trim(),
+      detail: projectForm.detail.trim() || projectForm.description.trim(),
       image:
         projectForm.image ||
         "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80",
+      gallery: projectForm.gallery,
+      videoUrl: projectForm.videoUrl.trim(),
+      featured: projectForm.featured,
       createdAt: new Date().toISOString(),
     };
 
     setProjects((current) => [project, ...current]);
-    setProjectForm({ title: "", category: "Penulisan", description: "", image: "" });
+    setProjectForm({
+      title: "",
+      category: "Penulisan",
+      description: "",
+      detail: "",
+      image: "",
+      gallery: [],
+      videoUrl: "",
+      featured: true,
+    });
     setPreview("");
+    setGalleryPreview([]);
+    setVideoPreview("");
   }
 
   function addComment(event: FormEvent<HTMLFormElement>) {
@@ -135,6 +189,22 @@ export function PortfolioSite() {
     setProjects((current) => current.filter((project) => project.id !== projectId));
   }
 
+  function toggleFeatured(projectId: string) {
+    setProjects((current) =>
+      normalizeProjects(current).map((project) =>
+        project.id === projectId ? { ...project, featured: !project.featured } : project,
+      ),
+    );
+  }
+
+  const navLinks = [
+    { label: "About", href: "#about" },
+    { label: "Timeline", href: "#journey" },
+    { label: "Semua Project", href: "/projects" },
+    { label: "Komentar", href: "#comments" },
+    { label: "Contact", href: "#contact" },
+  ];
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#fff7fb] text-[#34212b]">
       <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/70 bg-white/75 backdrop-blur-xl">
@@ -143,30 +213,106 @@ export function PortfolioSite() {
             HRR
           </a>
           <div className="hidden items-center gap-7 text-sm font-semibold text-[#6f5361] md:flex">
-            <a href="#about" className="transition hover:text-[#d62a7c]">
-              About
-            </a>
-            <a href="#journey" className="transition hover:text-[#d62a7c]">
-              Timeline
-            </a>
-            <a href="#projects" className="transition hover:text-[#d62a7c]">
-              Project
-            </a>
-            <a href="#comments" className="transition hover:text-[#d62a7c]">
-              Komentar
-            </a>
-            <a href="#contact" className="transition hover:text-[#d62a7c]">
-              Contact
-            </a>
+            {navLinks.map((link) =>
+              link.href.startsWith("/") ? (
+                <Link key={link.href} href={link.href} className="transition hover:text-[#d62a7c]">
+                  {link.label}
+                </Link>
+              ) : (
+                <a key={link.href} href={link.href} className="transition hover:text-[#d62a7c]">
+                  {link.label}
+                </a>
+              ),
+            )}
           </div>
-          <a
-            href="#upload"
-            className="rounded-full bg-[#ff5aa9] px-5 py-2 text-sm font-bold text-white shadow-lg shadow-pink-200 transition hover:-translate-y-0.5 hover:bg-[#e83f92]"
-          >
-            Upload
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="#upload"
+              className="hidden rounded-full bg-[#ff5aa9] px-5 py-2 text-sm font-bold text-white shadow-lg shadow-pink-200 transition hover:-translate-y-0.5 hover:bg-[#e83f92] sm:inline-flex"
+            >
+              Upload
+            </a>
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-label="Buka menu"
+              className="grid h-11 w-11 place-items-center rounded-full border border-[#ffd3e7] bg-white text-[#d62a7c] shadow-sm md:hidden"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="2.3"
+                  d="M4 7h16M4 12h16M4 17h16"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       </nav>
+
+      {isMobileNavOpen ? (
+        <div className="fixed inset-0 z-[60] md:hidden">
+          <button
+            type="button"
+            aria-label="Tutup menu"
+            onClick={() => setIsMobileNavOpen(false)}
+            className="absolute inset-0 bg-[#2b1722]/35 backdrop-blur-sm"
+          />
+          <aside className="absolute right-0 top-0 flex h-full w-[82%] max-w-sm flex-col bg-white p-6 shadow-2xl shadow-pink-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black tracking-[0.2em] text-[#d62a7c]">HRR</span>
+              <button
+                type="button"
+                onClick={() => setIsMobileNavOpen(false)}
+                aria-label="Tutup menu"
+                className="grid h-10 w-10 place-items-center rounded-full bg-[#fff0f7] text-[#c52b75]"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeWidth="2.3"
+                    d="m7 7 10 10M17 7 7 17"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="mt-9 grid gap-3">
+              {navLinks.map((link) =>
+                link.href.startsWith("/") ? (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="rounded-2xl bg-[#fff7fb] px-4 py-4 text-base font-black text-[#2b1722]"
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="rounded-2xl bg-[#fff7fb] px-4 py-4 text-base font-black text-[#2b1722]"
+                  >
+                    {link.label}
+                  </a>
+                ),
+              )}
+            </div>
+            <a
+              href="#upload"
+              onClick={() => setIsMobileNavOpen(false)}
+              className="mt-auto rounded-full bg-[#ff5aa9] px-5 py-4 text-center text-sm font-black text-white shadow-lg shadow-pink-200"
+            >
+              Upload Project
+            </a>
+          </aside>
+        </div>
+      ) : null}
 
       <section id="home" className="relative px-5 pb-14 pt-28 sm:px-8 lg:min-h-screen lg:pt-32">
         <div className="absolute left-0 top-20 h-72 w-72 rounded-full bg-[#ffd2e8] blur-3xl" />
@@ -191,8 +337,14 @@ export function PortfolioSite() {
                 href="#projects"
                 className="rounded-full bg-[#2b1722] px-6 py-3 text-sm font-bold text-white shadow-xl shadow-pink-200 transition hover:-translate-y-0.5"
               >
-                Lihat Project
+                Lihat Pameran
               </a>
+              <Link
+                href="/projects"
+                className="rounded-full border border-[#f3abc9] bg-white px-6 py-3 text-sm font-bold text-[#c52b75] transition hover:-translate-y-0.5 hover:border-[#ff5aa9]"
+              >
+                Semua Project
+              </Link>
               <a
                 href="#contact"
                 className="rounded-full border border-[#f3abc9] bg-white px-6 py-3 text-sm font-bold text-[#c52b75] transition hover:-translate-y-0.5 hover:border-[#ff5aa9]"
@@ -334,25 +486,27 @@ export function PortfolioSite() {
               <p className="text-sm font-black uppercase tracking-[0.22em] text-[#d62a7c]">
                 Portfolio
               </p>
-              <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Project Terbaru</h2>
+              <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Pameran Pilihan</h2>
             </div>
             <p className="max-w-xl text-base leading-7 text-[#6f5361]">
-              Semua project yang diupload akan langsung muncul di daftar ini dan
-              tersimpan di browser.
+              Landing page hanya menampilkan maksimal 4 project pilihan. Project
+              lengkap tetap tersedia di halaman khusus.
             </p>
           </div>
 
           <div className="mt-9 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {projects.map((project) => (
+            {featuredProjects.map((project) => (
               <article
                 key={project.id}
                 className="overflow-hidden rounded-3xl border border-[#ffd3e7] bg-[#fffafd] shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-pink-100"
               >
-                <img
-                  src={project.image}
-                  alt={project.title}
-                  className="h-56 w-full object-cover"
-                />
+                <Link href={`/projects/${project.id}`}>
+                  <img
+                    src={project.image}
+                    alt={project.title}
+                    className="h-56 w-full object-cover"
+                  />
+                </Link>
                 <div className="p-6">
                   <div className="flex items-center justify-between gap-3">
                     <span className="rounded-full bg-[#ffe4f0] px-3 py-1 text-xs font-black text-[#c52b75]">
@@ -362,21 +516,50 @@ export function PortfolioSite() {
                       {formatDate(project.createdAt)}
                     </span>
                   </div>
-                  <h3 className="mt-4 text-2xl font-black text-[#2b1722]">{project.title}</h3>
+                  <Link href={`/projects/${project.id}`}>
+                    <h3 className="mt-4 text-2xl font-black text-[#2b1722] transition hover:text-[#d62a7c]">
+                      {project.title}
+                    </h3>
+                  </Link>
                   <p className="mt-3 leading-7 text-[#6f5361]">{project.description}</p>
-                  <button
-                    type="button"
-                    onClick={() => deleteProject(project.id)}
-                    className="mt-5 rounded-full border border-[#ffd3e7] px-4 py-2 text-xs font-black text-[#c52b75] transition hover:bg-[#fff0f7]"
-                  >
-                    Hapus Project
-                  </button>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="rounded-full bg-[#2b1722] px-4 py-2 text-xs font-black text-white transition hover:-translate-y-0.5"
+                    >
+                      Detail
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => toggleFeatured(project.id)}
+                      className="rounded-full border border-[#ffd3e7] px-4 py-2 text-xs font-black text-[#c52b75] transition hover:bg-[#fff0f7]"
+                    >
+                      Sembunyikan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteProject(project.id)}
+                      className="rounded-full border border-[#ffd3e7] px-4 py-2 text-xs font-black text-[#c52b75] transition hover:bg-[#fff0f7]"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
           </div>
+          <div className="mt-8 text-center">
+            <Link
+              href="/projects"
+              className="inline-flex rounded-full bg-[#ff5aa9] px-6 py-3 text-sm font-black text-white shadow-lg shadow-pink-200 transition hover:-translate-y-0.5"
+            >
+              Kelola Semua Project
+            </Link>
+          </div>
         </div>
       </section>
+
+      <AiAssistant />
 
       <section id="upload" className="px-5 py-16 sm:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
@@ -386,8 +569,9 @@ export function PortfolioSite() {
             </p>
             <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Tambah Project</h2>
             <p className="mt-4 max-w-lg leading-7 text-[#6f5361]">
-              Masukkan judul, kategori, deskripsi, dan gambar project. Untuk
-              produksi, struktur tabel Supabase sudah aku siapkan.
+              Masukkan judul, kategori, deskripsi, detail, foto, dan file video.
+              Project bisa dipilih untuk tampil di landing page atau hanya muncul
+              di halaman semua project.
             </p>
           </div>
 
@@ -424,7 +608,7 @@ export function PortfolioSite() {
             </div>
 
             <label className="mt-4 block">
-              <span className="text-sm font-bold text-[#5c3c4b]">Deskripsi</span>
+              <span className="text-sm font-bold text-[#5c3c4b]">Deskripsi Singkat</span>
               <textarea
                 value={projectForm.description}
                 onChange={(event) =>
@@ -433,6 +617,31 @@ export function PortfolioSite() {
                 className="mt-2 min-h-32 w-full resize-none rounded-2xl border border-[#f4bdd4] bg-[#fffafd] px-4 py-3 outline-none transition focus:border-[#ff5aa9]"
                 placeholder="Ceritakan project ini..."
               />
+            </label>
+
+            <label className="mt-4 block">
+              <span className="text-sm font-bold text-[#5c3c4b]">Detail Project</span>
+              <textarea
+                value={projectForm.detail}
+                onChange={(event) =>
+                  setProjectForm((current) => ({ ...current, detail: event.target.value }))
+                }
+                className="mt-2 min-h-40 w-full resize-none rounded-2xl border border-[#f4bdd4] bg-[#fffafd] px-4 py-3 outline-none transition focus:border-[#ff5aa9]"
+                placeholder="Tuliskan proses, tujuan, hasil, atau cerita lengkap project..."
+              />
+            </label>
+
+            <label className="mt-4 grid cursor-pointer place-items-center rounded-3xl border-2 border-dashed border-[#f4bdd4] bg-[#fffafd] p-5 text-center transition hover:border-[#ff5aa9]">
+              <input type="file" accept="video/*" onChange={handleVideoUpload} className="sr-only" />
+              {videoPreview ? (
+                <span className="text-sm font-bold text-[#c52b75]">
+                  Video siap disimpan: {videoPreview}
+                </span>
+              ) : (
+                <span className="text-sm font-bold text-[#c52b75]">
+                  Klik untuk upload video project
+                </span>
+              )}
             </label>
 
             <label className="mt-4 grid cursor-pointer place-items-center rounded-3xl border-2 border-dashed border-[#f4bdd4] bg-[#fffafd] p-5 text-center transition hover:border-[#ff5aa9]">
@@ -448,6 +657,39 @@ export function PortfolioSite() {
                   Klik untuk upload gambar project
                 </span>
               )}
+            </label>
+
+            <label className="mt-4 grid cursor-pointer place-items-center rounded-3xl border-2 border-dashed border-[#f4bdd4] bg-[#fffafd] p-5 text-center transition hover:border-[#ff5aa9]">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleGalleryUpload}
+                className="sr-only"
+              />
+              {galleryPreview.length > 0 ? (
+                <span className="text-sm font-bold text-[#c52b75]">
+                  {galleryPreview.length} foto detail siap disimpan
+                </span>
+              ) : (
+                <span className="text-sm font-bold text-[#c52b75]">
+                  Klik untuk upload foto tambahan
+                </span>
+              )}
+            </label>
+
+            <label className="mt-4 flex items-center gap-3 rounded-2xl bg-[#fff0f7] px-4 py-3">
+              <input
+                type="checkbox"
+                checked={projectForm.featured}
+                onChange={(event) =>
+                  setProjectForm((current) => ({ ...current, featured: event.target.checked }))
+                }
+                className="h-4 w-4 accent-[#ff5aa9]"
+              />
+              <span className="text-sm font-bold text-[#5c3c4b]">
+                Tampilkan project ini di landing page
+              </span>
             </label>
 
             <button

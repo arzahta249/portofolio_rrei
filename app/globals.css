@@ -55,3 +55,35 @@ select {
   border-radius: 999px;
   background: #ff9ccb;
 }
+
+.butterfly-loader {
+  display: inline-block;
+  transform-origin: center;
+  animation: butterfly-float 1.15s ease-in-out infinite;
+}
+
+.ai-butterfly-button {
+  animation: butterfly-button-float 2.4s ease-in-out infinite;
+}
+
+@keyframes butterfly-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg) scale(1);
+  }
+
+  50% {
+    transform: translateY(-7px) rotate(9deg) scale(1.08);
+  }
+}
+
+@keyframes butterfly-button-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}

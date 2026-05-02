@@ -3,7 +3,11 @@ export type Project = {
   title: string;
   category: string;
   description: string;
+  detail?: string;
   image: string;
+  gallery?: string[];
+  videoUrl?: string;
+  featured?: boolean;
   createdAt: string;
 };
 
@@ -21,8 +25,16 @@ export const starterProjects: Project[] = [
     category: "Penulisan",
     description:
       "Copywriting lembut untuk kampanye digital dengan gaya storytelling yang dekat dan hangat.",
+    detail:
+      "Project ini berfokus pada gaya penulisan yang manis, mudah dipahami, dan cocok untuk audiens digital. Harum mengolah pesan brand menjadi narasi pendek yang terasa dekat tanpa kehilangan tujuan promosi.",
     image:
       "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=900&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80",
+    ],
+    videoUrl: "",
+    featured: true,
     createdAt: "2026-04-01T10:00:00.000Z",
   },
   {
@@ -31,8 +43,16 @@ export const starterProjects: Project[] = [
     category: "Videografi",
     description:
       "Konsep video pendek tentang rutinitas kreatif mahasiswi Bisnis Digital di lingkungan kampus.",
+    detail:
+      "Video pendek ini dirancang untuk menampilkan keseharian kreatif di kampus: mulai dari ide, pengambilan gambar, pemilihan musik, sampai ritme editing yang cocok untuk media sosial.",
     image:
       "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=900&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=900&q=80",
+    ],
+    videoUrl: "",
+    featured: true,
     createdAt: "2026-04-04T10:00:00.000Z",
   },
   {
@@ -41,9 +61,35 @@ export const starterProjects: Project[] = [
     category: "Menggambar",
     description:
       "Eksplorasi visual produk dengan karakter lucu, palet pink, dan detail yang playful.",
+    detail:
+      "Ilustrasi ini mengeksplorasi karakter visual yang lembut dan playful. Cocok untuk konten promosi ringan, poster digital, dan visual pendukung presentasi.",
     image:
       "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=900&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+    ],
+    videoUrl: "",
+    featured: true,
     createdAt: "2026-04-07T10:00:00.000Z",
+  },
+  {
+    id: "starter-campaign",
+    title: "Campaign Moodboard Pink",
+    category: "Penulisan",
+    description:
+      "Moodboard campaign untuk konten sosial media dengan tone ceria, lembut, dan mudah diingat.",
+    detail:
+      "Project ini menyatukan pesan kampanye, referensi warna, copy pendek, serta gaya visual agar brand punya arah konten yang konsisten. Fokusnya adalah membuat konsep terasa ringan tapi tetap punya identitas.",
+    image:
+      "https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=900&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1542744095-fcf48d80b0fd?auto=format&fit=crop&w=900&q=80",
+    ],
+    videoUrl: "",
+    featured: true,
+    createdAt: "2026-04-10T10:00:00.000Z",
   },
 ];
 
