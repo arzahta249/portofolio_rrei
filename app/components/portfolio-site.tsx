@@ -1,24 +1,33 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  PointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { AiAssistant } from "./ai-assistant";
 import {
   Comment,
   Project,
   journey,
+  positiveEmojis,
   skills,
   socials,
   starterComments,
   starterProjects,
   toolkit,
 } from "../data/portfolio";
+import { COMMENT_STORAGE_KEY, readComments } from "../lib/comment-storage";
 import {
   PROJECT_STORAGE_KEY,
   getFeaturedProjects,
   normalizeProjects,
   readProjects,
-  readStorage,
 } from "../lib/portfolio-storage";
 
 function formatDate(value: string) {
@@ -43,6 +52,12 @@ export function PortfolioSite() {
   const [preview, setPreview] = useState("");
   const [galleryPreview, setGalleryPreview] = useState<string[]>([]);
   const [videoPreview, setVideoPreview] = useState("");
+  const [commentAudioName, setCommentAudioName] = useState("");
+  const [isCommentRecording, setIsCommentRecording] = useState(false);
+  const [commentRecordError, setCommentRecordError] = useState("");
+  const [heroBurstKey, setHeroBurstKey] = useState(0);
+  const commentRecorderRef = useRef<MediaRecorder | null>(null);
+  const commentChunksRef = useRef<Blob[]>([]);
   const [projectForm, setProjectForm] = useState({
     title: "",
     category: "Penulisan",
@@ -53,12 +68,17 @@ export function PortfolioSite() {
     videoUrl: "",
     featured: true,
   });
-  const [commentForm, setCommentForm] = useState({ name: "", message: "" });
+  const [commentForm, setCommentForm] = useState({
+    name: "",
+    message: "",
+    emoji: "love",
+    audio: "",
+  });
 
   useEffect(() => {
     queueMicrotask(() => {
       setProjects(readProjects());
-      setComments(readStorage("harum-comments", starterComments));
+      setComments(readComments());
       setIsStorageReady(true);
     });
   }, []);
@@ -70,7 +90,7 @@ export function PortfolioSite() {
 
   useEffect(() => {
     if (!isStorageReady) return;
-    window.localStorage.setItem("harum-comments", JSON.stringify(comments));
+    window.localStorage.setItem(COMMENT_STORAGE_KEY, JSON.stringify(comments));
   }, [comments, isStorageReady]);
 
   const projectStats = useMemo(
@@ -167,18 +187,100 @@ export function PortfolioSite() {
 
   function addComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!commentForm.name.trim() || !commentForm.message.trim()) return;
+    if (!commentForm.name.trim() || (!commentForm.message.trim() && !commentForm.audio)) return;
 
     setComments((current) => [
       {
         id: crypto.randomUUID(),
         name: commentForm.name.trim(),
         message: commentForm.message.trim(),
+        emoji: commentForm.emoji,
+        audio: commentForm.audio,
         createdAt: new Date().toISOString(),
       },
       ...current,
     ]);
-    setCommentForm({ name: "", message: "" });
+    setCommentForm({ name: "", message: "", emoji: "love", audio: "" });
+    setCommentAudioName("");
+  }
+
+  function handleCommentAudioUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCommentAudioName(file.name);
+      setCommentForm((current) => ({ ...current, audio: String(reader.result) }));
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function startCommentRecording() {
+    setCommentRecordError("");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      commentChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          commentChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(commentChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        const reader = new FileReader();
+        reader.onload = () => {
+          setCommentAudioName("rekaman-komentar.webm");
+          setCommentForm((current) => ({ ...current, audio: String(reader.result) }));
+        };
+        reader.readAsDataURL(audioBlob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start();
+      commentRecorderRef.current = recorder;
+      setIsCommentRecording(true);
+    } catch {
+      setCommentRecordError("Microphone tidak bisa diakses. Izinkan akses mic di browser.");
+    }
+  }
+
+  function stopCommentRecording() {
+    const recorder = commentRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+
+    recorder.stop();
+    setIsCommentRecording(false);
+  }
+
+  function playHeroBurst() {
+    setHeroBurstKey((current) => current + 1);
+  }
+
+  function handleProjectTilt(event: PointerEvent<HTMLElement>) {
+    const target = event.currentTarget;
+    const rect = target.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+
+    target.style.setProperty("--tilt-x", `${(-y * 7).toFixed(2)}deg`);
+    target.style.setProperty("--tilt-y", `${(x * 7).toFixed(2)}deg`);
+    target.style.setProperty("--shine-x", `${((x + 1) * 50).toFixed(1)}%`);
+    target.style.setProperty("--shine-y", `${((y + 1) * 50).toFixed(1)}%`);
+  }
+
+  function resetProjectTilt(event: PointerEvent<HTMLElement>) {
+    const target = event.currentTarget;
+    target.style.setProperty("--tilt-x", "0deg");
+    target.style.setProperty("--tilt-y", "0deg");
+    target.style.setProperty("--shine-x", "50%");
+    target.style.setProperty("--shine-y", "50%");
   }
 
   function deleteComment(commentId: string) {
@@ -201,7 +303,7 @@ export function PortfolioSite() {
     { label: "About", href: "#about" },
     { label: "Timeline", href: "#journey" },
     { label: "Semua Project", href: "/projects" },
-    { label: "Komentar", href: "#comments" },
+    { label: "Komentar", href: "/comments" },
     { label: "Contact", href: "#contact" },
   ];
 
@@ -319,7 +421,7 @@ export function PortfolioSite() {
         <div className="absolute bottom-16 right-0 h-80 w-80 rounded-full bg-[#bde9ff] blur-3xl" />
 
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1.03fr_0.97fr]">
-          <div>
+          <div className="order-2 lg:order-1">
             <p className="mb-4 inline-flex rounded-full border border-[#ffc3de] bg-white/80 px-4 py-2 text-sm font-bold text-[#c52b75] shadow-sm">
               Mahasiswi Bisnis Digital Universitas Pancasakti
             </p>
@@ -327,9 +429,8 @@ export function PortfolioSite() {
               Harum Refa Rakhmawati
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#6f5361]">
-              Portfolio digital bernuansa pink untuk menampilkan karya penulisan,
-              videografi, dan menggambar dengan tampilan modern, lucu, dan mudah
-              diperbarui.
+              Portfolio digital ini di gunakan untuk menampilkan karya penulisan,
+              videografi, dan menggambar yang diciptakan oleh Harum Refa Rakhmawati. Karya-karya ini merupakan hasil dari proses dari ide kreatif nya sendiri.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -337,13 +438,13 @@ export function PortfolioSite() {
                 href="#projects"
                 className="rounded-full bg-[#2b1722] px-6 py-3 text-sm font-bold text-white shadow-xl shadow-pink-200 transition hover:-translate-y-0.5"
               >
-                Lihat Pameran
+                Lihat Project
               </a>
               <Link
                 href="/projects"
                 className="rounded-full border border-[#f3abc9] bg-white px-6 py-3 text-sm font-bold text-[#c52b75] transition hover:-translate-y-0.5 hover:border-[#ff5aa9]"
               >
-                Semua Project
+                All Project
               </Link>
               <a
                 href="#contact"
@@ -370,24 +471,45 @@ export function PortfolioSite() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-xl">
-            <div className="absolute -left-5 top-10 z-10 rounded-3xl bg-white px-5 py-4 shadow-xl shadow-pink-100">
+          <div className="order-1 relative mx-auto grid w-full max-w-xl place-items-center py-8 lg:order-2">
+            <div className="creative-mood-card absolute left-0 top-8 z-20 rounded-3xl border border-[#ffd3e7] bg-white/92 px-5 py-4 shadow-xl shadow-pink-100 backdrop-blur">
+              <div className="absolute -right-2 -top-2 grid h-8 w-8 place-items-center rounded-full bg-[#ff9ccb] text-sm font-black text-white shadow-lg shadow-pink-200">
+                ✦
+              </div>
               <p className="text-xs font-bold uppercase text-[#a96a86]">Creative mood</p>
-              <p className="text-2xl font-black text-[#d62a7c]">Pink, soft, bold</p>
+              <p className="text-2xl font-black text-[#d62a7c]">Pink, soft</p>
             </div>
-            <div className="relative overflow-hidden rounded-[2rem] border-8 border-white bg-[#ffe1ef] shadow-2xl shadow-pink-200">
-              <img
-                src="/Screenshot%202026-04-12%20151850.png"
-                alt="Foto Harum Refa Rakhmawati"
-                className="h-[520px] w-full object-cover"
-              />
-              <div className="absolute inset-x-5 bottom-5 rounded-3xl bg-white/88 p-5 backdrop-blur">
+            <div className="absolute right-6 top-12 h-16 w-16 rounded-full bg-[#bde9ff] shadow-xl shadow-sky-100" />
+            <div className="absolute bottom-16 left-8 h-12 w-12 rounded-full bg-[#fff6cf] shadow-xl shadow-yellow-100" />
+            <button
+              type="button"
+              onClick={playHeroBurst}
+              className="hero-photo-orbit relative grid aspect-square w-[min(82vw,460px)] place-items-center rounded-full bg-[#ffe1ef] p-5 text-left shadow-2xl shadow-pink-200"
+              aria-label="Mainkan animasi foto Harum"
+            >
+              <div className="hero-photo-glow absolute inset-0 rounded-full" />
+              <div key={heroBurstKey} className="hero-burst" aria-hidden="true">
+                <span>✿</span>
+                <span>♡</span>
+                <span>✦</span>
+                <span>✿</span>
+                <span>🦋</span>
+                <span>🦋</span>
+              </div>
+              <div className="relative z-10 aspect-square w-full overflow-hidden rounded-full border-[10px] border-white bg-[#ffe1ef]">
+                <img
+                  src="/Screenshot%202026-04-12%20151850.png"
+                  alt="Foto Harum Refa Rakhmawati"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-4 left-1/2 z-20 w-[82%] -translate-x-1/2 rounded-3xl bg-white/90 p-5 text-center shadow-xl backdrop-blur">
                 <p className="text-sm font-bold text-[#d62a7c]">Digital Business Student</p>
-                <p className="mt-1 text-xl font-black text-[#2b1722]">
+                <p className="mt-1 text-lg font-black text-[#2b1722] sm:text-xl">
                   Writing, video, and cute visuals.
                 </p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </section>
@@ -418,7 +540,9 @@ export function PortfolioSite() {
             <p className="text-sm font-black uppercase tracking-[0.22em] text-[#d62a7c]">About</p>
             <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Tentang Harum</h2>
           </div>
-          <div className="rounded-[2rem] border border-[#ffd3e7] bg-white p-7 shadow-sm">
+          <div
+            className="rounded-[2rem] border border-[#ffd3e7] bg-white p-7 shadow-sm"
+          >
             <p className="text-lg leading-8 text-[#604653]">
               Harum Refa Rakhmawati adalah mahasiswi Universitas Pancasakti,
               Program Studi Bisnis Digital. Ia menyukai proses merangkai ide
@@ -446,7 +570,9 @@ export function PortfolioSite() {
               Timeline
             </p>
             <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Perjalanan Kreatif</h2>
-            <div className="mt-7 rounded-3xl border border-[#ffd3e7] bg-white p-6">
+            <div
+              className="mt-7 rounded-3xl border border-[#ffd3e7] bg-white p-6"
+            >
               <p className="text-sm font-black uppercase text-[#9a7586]">Toolkit Favorit</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {toolkit.map((tool) => (
@@ -463,7 +589,10 @@ export function PortfolioSite() {
 
           <div className="grid gap-4">
             {journey.map((item) => (
-              <article key={item.year} className="rounded-3xl border border-[#ffd3e7] bg-white p-6">
+              <article
+                key={item.year}
+                className="rounded-3xl border border-[#ffd3e7] bg-white p-6"
+              >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                   <span className="w-fit rounded-full bg-[#ff5aa9] px-4 py-2 text-sm font-black text-white">
                     {item.year}
@@ -486,11 +615,11 @@ export function PortfolioSite() {
               <p className="text-sm font-black uppercase tracking-[0.22em] text-[#d62a7c]">
                 Portfolio
               </p>
-              <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Pameran Pilihan</h2>
+              <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Project</h2>
             </div>
             <p className="max-w-xl text-base leading-7 text-[#6f5361]">
               Landing page hanya menampilkan maksimal 4 project pilihan. Project
-              lengkap tetap tersedia di halaman khusus.
+              lengkap tetap tersedia di halaman All project.
             </p>
           </div>
 
@@ -498,7 +627,9 @@ export function PortfolioSite() {
             {featuredProjects.map((project) => (
               <article
                 key={project.id}
-                className="overflow-hidden rounded-3xl border border-[#ffd3e7] bg-[#fffafd] shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-pink-100"
+                onPointerMove={handleProjectTilt}
+                onPointerLeave={resetProjectTilt}
+                className="project-card-3d overflow-hidden rounded-3xl border border-[#ffd3e7] bg-[#fffafd] shadow-sm"
               >
                 <Link href={`/projects/${project.id}`}>
                   <img
@@ -571,7 +702,7 @@ export function PortfolioSite() {
             <p className="mt-4 max-w-lg leading-7 text-[#6f5361]">
               Masukkan judul, kategori, deskripsi, detail, foto, dan file video.
               Project bisa dipilih untuk tampil di landing page atau hanya muncul
-              di halaman semua project.
+              di halaman all project.
             </p>
           </div>
 
@@ -709,7 +840,13 @@ export function PortfolioSite() {
               Komentar
             </p>
             <h2 className="mt-3 text-4xl font-black">Ruang Apresiasi</h2>
-            <form onSubmit={addComment} className="mt-8 rounded-[2rem] bg-white/10 p-5">
+            <p className="mt-4 leading-7 text-white/75">
+              Anda bisa meninggalkan komentar teks, emoji positif, atau suara.
+            </p>
+            <form
+              onSubmit={addComment}
+              className="mt-8 rounded-[2rem] bg-white/10 p-5"
+            >
               <input
                 value={commentForm.name}
                 onChange={(event) =>
@@ -726,24 +863,105 @@ export function PortfolioSite() {
                 className="mt-3 min-h-28 w-full resize-none rounded-2xl border border-white/15 bg-white/95 px-4 py-3 text-[#2b1722] outline-none"
                 placeholder="Tulis komentar..."
               />
+              <div className="mt-3 grid gap-2">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#ff9ccb]">
+                  Emoji positif
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {positiveEmojis.map((emoji) => (
+                    <button
+                      key={emoji.id}
+                      type="button"
+                      onClick={() =>
+                        setCommentForm((current) => ({ ...current, emoji: emoji.id }))
+                      }
+                      className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                        commentForm.emoji === emoji.id
+                          ? "bg-[#ff9ccb] text-[#2b1722]"
+                          : "bg-white/10 text-white hover:bg-white/20"
+                      }`}
+                    >
+                      {emoji.symbol} {emoji.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="mt-3 grid cursor-pointer place-items-center rounded-2xl border border-dashed border-white/25 bg-white/10 px-4 py-4 text-center transition hover:bg-white/15">
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleCommentAudioUpload}
+                  className="sr-only"
+                />
+                <span className="text-sm font-black text-[#ff9ccb]">
+                  {commentAudioName ? `Suara siap dikirim: ${commentAudioName}` : "Upload suara komentar"}
+                </span>
+              </label>
+              <div className="mt-3 rounded-2xl bg-white/10 p-3">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={isCommentRecording ? stopCommentRecording : startCommentRecording}
+                    className={`rounded-full px-5 py-3 text-sm font-black transition ${
+                      isCommentRecording
+                        ? "bg-white text-[#c52b75]"
+                        : "bg-[#ff9ccb] text-[#2b1722]"
+                    }`}
+                  >
+                    {isCommentRecording ? "Stop Rekam" : "Rekam Suara"}
+                  </button>
+                  {commentForm.audio ? (
+                    <audio controls src={commentForm.audio} className="min-w-0 flex-1" />
+                  ) : null}
+                </div>
+                {commentRecordError ? (
+                  <p className="mt-2 text-sm font-bold text-[#ff9ccb]">{commentRecordError}</p>
+                ) : null}
+                {isCommentRecording ? (
+                  <div className="mt-3 flex items-center gap-3 rounded-2xl bg-[#2b1722]/40 px-4 py-3">
+                    <span className="recording-dot" />
+                    <span className="text-sm font-black text-white">Sedang merekam...</span>
+                    <span className="recording-wave" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </div>
+                ) : null}
+              </div>
               <button
                 type="submit"
                 className="mt-3 rounded-full bg-[#ff9ccb] px-6 py-3 text-sm font-black text-[#2b1722] transition hover:-translate-y-0.5"
               >
                 Kirim Komentar
               </button>
+              <Link
+                href="/comments"
+                className="ml-2 inline-flex rounded-full border border-white/20 px-6 py-3 text-sm font-black text-white transition hover:bg-white/10"
+              >
+                Lihat Semua
+              </Link>
             </form>
           </div>
 
           <div className="max-h-[520px] space-y-4 overflow-y-auto pr-2 custom-scrollbar">
             {comments.map((comment) => (
-              <div key={comment.id} className="rounded-3xl bg-white p-5 text-[#2b1722]">
+              <div
+                key={comment.id}
+                className="rounded-3xl bg-white p-5 text-[#2b1722]"
+              >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-black">{comment.name}</p>
-                    <p className="mt-1 text-xs font-semibold text-[#9a7586]">
-                      {formatDate(comment.createdAt)}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-[#fff0f7] text-lg font-black text-[#c52b75]">
+                      {positiveEmojis.find((emoji) => emoji.id === comment.emoji)?.symbol || "♡"}
+                    </span>
+                    <div>
+                      <p className="font-black">{comment.name}</p>
+                      <p className="mt-1 text-xs font-semibold text-[#9a7586]">
+                        {formatDate(comment.createdAt)}
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -753,7 +971,12 @@ export function PortfolioSite() {
                     Hapus
                   </button>
                 </div>
-                <p className="mt-3 leading-7 text-[#6f5361]">{comment.message}</p>
+                {comment.message ? (
+                  <p className="mt-3 leading-7 text-[#6f5361]">{comment.message}</p>
+                ) : null}
+                {comment.audio ? (
+                  <audio controls src={comment.audio} className="mt-4 w-full" />
+                ) : null}
               </div>
             ))}
           </div>
@@ -761,7 +984,9 @@ export function PortfolioSite() {
       </section>
 
       <section id="contact" className="px-5 py-16 sm:px-8">
-        <div className="mx-auto max-w-7xl rounded-[2rem] border border-[#ffd3e7] bg-white p-8 text-center shadow-xl shadow-pink-100">
+        <div
+          className="mx-auto max-w-7xl rounded-[2rem] border border-[#ffd3e7] bg-white p-8 text-center shadow-xl shadow-pink-100"
+        >
           <p className="text-sm font-black uppercase tracking-[0.22em] text-[#d62a7c]">Contact</p>
           <h2 className="mt-3 text-4xl font-black text-[#2b1722]">Mari Kolaborasi</h2>
           <p className="mx-auto mt-4 max-w-2xl leading-7 text-[#6f5361]">
@@ -770,13 +995,13 @@ export function PortfolioSite() {
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a
-              href="mailto:harum.refa@example.com"
+              href="marzaalifi@gmail.com"
               className="rounded-full bg-[#2b1722] px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
             >
               Email Harum
             </a>
             <a
-              href="https://instagram.com/"
+              href="https://www.instagram.com/rrei.444?igsh=OWtndzhwaGtxZHdt"
               target="_blank"
               rel="noreferrer"
               className="rounded-full border border-[#f3abc9] px-6 py-3 text-sm font-bold text-[#c52b75] transition hover:-translate-y-0.5"

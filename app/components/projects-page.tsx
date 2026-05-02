@@ -85,7 +85,7 @@ export function ProjectsPage() {
           </h1>
           <p className="mt-4 max-w-2xl leading-7 text-[#6f5361]">
             Semua project yang diupload tampil di halaman ini. Gunakan tombol landing
-            untuk memilih project mana yang muncul sebagai pameran di halaman utama.
+            untuk memilih project mana yang muncul sebagai project utama di halaman utama.
           </p>
         </header>
 
@@ -93,7 +93,7 @@ export function ProjectsPage() {
           {projects.map((project) => (
             <article
               key={project.id}
-              className="overflow-hidden rounded-3xl border border-[#ffd3e7] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-pink-100"
+              className="project-card-3d overflow-hidden rounded-3xl border border-[#ffd3e7] bg-white shadow-sm"
             >
               <Link href={`/projects/${project.id}`}>
                 <img src={project.image} alt={project.title} className="h-56 w-full object-cover" />
