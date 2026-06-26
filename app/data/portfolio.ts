@@ -20,6 +20,43 @@ export type Comment = {
   createdAt: string;
 };
 
+export type Moment = {
+  id: string;
+  title: string;
+  description: string;
+  activityDetails?: string;
+  executionDate?: string;
+  mediaUrl: string;
+  mediaType: "image" | "video";
+  gallery?: { url: string; description: string }[];
+  featured?: boolean;
+  createdAt: string;
+};
+
+export const starterMoments: Moment[] = [
+  {
+    id: "moment-1",
+    title: "Mengikuti Seminar Bisnis Digital",
+    description: "Hari ini sangat menyenangkan! Belajar banyak hal baru tentang perkembangan industri digital di Indonesia.",
+    activityDetails: "Seminar ini diadakan oleh himpunan mahasiswa Bisnis Digital, mengundang praktisi dari startup terkemuka untuk membahas strategi marketing 4.0 dan analisis data.",
+    executionDate: "2026-05-10",
+    mediaUrl: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=900&q=80",
+    mediaType: "image",
+    gallery: [
+      {
+        url: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=900&q=80",
+        description: "Materi tentang growth hacking"
+      },
+      {
+        url: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=900&q=80",
+        description: "Sesi tanya jawab dengan pemateri"
+      }
+    ],
+    featured: true,
+    createdAt: "2026-05-10T10:00:00.000Z",
+  }
+];
+
 export const starterProjects: Project[] = [
   {
     id: "starter-writing",

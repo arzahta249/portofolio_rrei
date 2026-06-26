@@ -34,3 +34,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Environment Variables
+
+Set these variables in Vercel Project Settings > Environment Variables, then redeploy the project.
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_publishable_or_anon_key
+NEXT_PUBLIC_SUPABASE_PROJECT_BUCKET=projects
+NEXT_PUBLIC_SITE_URL=https://your-vercel-domain.vercel.app
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_MODEL=deepseek/deepseek-v4-pro
+OPENROUTER_MAX_TOKENS=1200
+```
+
+`OPENROUTER_API_KEY` must stay server-side and should not use the `NEXT_PUBLIC_` prefix. If a key has been shared publicly, create a new key in OpenRouter and replace it in Vercel before redeploying.

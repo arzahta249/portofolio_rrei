@@ -1,4 +1,4 @@
-import { Project, starterProjects } from "../data/portfolio";
+import { Project, starterProjects, Moment, starterMoments } from "../data/portfolio";
 
 export const PROJECT_STORAGE_KEY = "harum-projects";
 
@@ -33,6 +33,16 @@ export function readProjects() {
 
 export function saveProjects(projects: Project[]) {
   window.localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects));
+}
+
+export const MOMENT_STORAGE_KEY = "harum-moments";
+
+export function readMoments(): Moment[] {
+  return readStorage(MOMENT_STORAGE_KEY, starterMoments);
+}
+
+export function saveMoments(moments: Moment[]) {
+  window.localStorage.setItem(MOMENT_STORAGE_KEY, JSON.stringify(moments));
 }
 
 export function getFeaturedProjects(projects: Project[]) {

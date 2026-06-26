@@ -8,6 +8,7 @@ import {
   normalizeProjects,
   readProjects,
 } from "../lib/portfolio-storage";
+import { useAuth } from "./AuthProvider";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -16,6 +17,7 @@ function formatDate(value: string) {
 }
 
 export function ProjectsPage() {
+  const { role } = useAuth();
   const [projects, setProjects] = useState<Project[]>(starterProjects);
   const [isStorageReady, setIsStorageReady] = useState(false);
 
@@ -68,12 +70,14 @@ export function ProjectsPage() {
               HRR
             </Link>
           </div>
-          <Link
-            href="/#upload"
-            className="rounded-full bg-[#ff5aa9] px-5 py-2 text-sm font-black text-white shadow-lg shadow-pink-200 transition hover:-translate-y-0.5"
-          >
-            Upload Project
-          </Link>
+          {role === "admin" && (
+            <Link
+              href="/#upload"
+              className="rounded-full bg-[#ff5aa9] px-5 py-2 text-sm font-black text-white shadow-lg shadow-pink-200 transition hover:-translate-y-0.5"
+            >
+              Upload Project
+            </Link>
+          )}
         </nav>
 
         <header className="mt-14 rounded-[2rem] border border-[#ffd3e7] bg-white p-7 shadow-xl shadow-pink-100">
@@ -120,20 +124,24 @@ export function ProjectsPage() {
                   >
                     Buka Detail
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() => toggleFeatured(project.id)}
-                    className="rounded-full border border-[#ffd3e7] px-4 py-2 text-xs font-black text-[#c52b75] transition hover:bg-[#fff0f7]"
-                  >
-                    {project.featured ? "Keluarkan dari Landing" : "Masukkan Landing"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteProject(project.id)}
-                    className="rounded-full border border-[#ffd3e7] px-4 py-2 text-xs font-black text-[#c52b75] transition hover:bg-[#fff0f7]"
-                  >
-                    Hapus
-                  </button>
+                  {role === "admin" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleFeatured(project.id)}
+                        className="rounded-full border border-[#ffd3e7] px-4 py-2 text-xs font-black text-[#c52b75] transition hover:bg-[#fff0f7]"
+                      >
+                        {project.featured ? "Keluarkan dari Landing" : "Masukkan Landing"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteProject(project.id)}
+                        className="rounded-full border border-[#ffd3e7] px-4 py-2 text-xs font-black text-[#c52b75] transition hover:bg-[#fff0f7]"
+                      >
+                        Hapus
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </article>

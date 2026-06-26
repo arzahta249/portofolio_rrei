@@ -1,13 +1,66 @@
 @import "tailwindcss";
 
-:root {
+:root, [data-theme="pink"] {
   --background: #fff7fb;
   --foreground: #34212b;
+  --foreground-dark: #2b1722;
+  --muted: #6f5361;
+  --primary: #ff5aa9;
+  --primary-hover: #e83f92;
+  --primary-text: #d62a7c;
+  --primary-dark: #c52b75;
+  --border-main: #f3abc9;
+  --soft-bg: #ffd2e8;
+  --soft-border: #ffd3e7;
+  --accent: #bde9ff;
+  --shadow-glow: var(--shadow-glow);
+}
+
+[data-theme="yellow"] {
+  --background: #fffbeb;
+  --foreground: #451a03;
+  --foreground-dark: #291002;
+  --muted: #78350f;
+  --primary: #f59e0b;
+  --primary-hover: #d97706;
+  --primary-text: #d97706;
+  --primary-dark: #b45309;
+  --border-main: #fcd34d;
+  --soft-bg: #fef08a;
+  --soft-border: #fef3c7;
+  --accent: #bbf7d0;
+  --shadow-glow: rgb(245 158 11 / 0.48); /* amber glow */
+}
+
+[data-theme="blue"] {
+  --background: #eff6ff;
+  --foreground: #172554;
+  --foreground-dark: #1e3a8a;
+  --muted: #1e40af;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-text: #1d4ed8;
+  --primary-dark: #1e40af;
+  --border-main: #93c5fd;
+  --soft-bg: #dbeafe;
+  --soft-border: #bfdbfe;
+  --accent: #60a5fa;
+  --shadow-glow: rgb(59 130 246 / 0.48);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-dark: var(--foreground-dark);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-text: var(--primary-text);
+  --color-primary-dark: var(--primary-dark);
+  --color-border-main: var(--border-main);
+  --color-soft-bg: var(--soft-bg);
+  --color-soft-border: var(--soft-border);
+  --color-accent: var(--accent);
   --font-sans: "Inter", "Segoe UI", Arial, Helvetica, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
@@ -25,8 +78,8 @@ html {
 }
 
 ::selection {
-  background: #ff9ccb;
-  color: #2b1722;
+  background: var(--primary);
+  color: var(--foreground-dark);
 }
 
 button,
@@ -89,10 +142,10 @@ select {
 .project-card-3d:hover {
   transform: perspective(900px) rotateX(var(--tilt-x, 2deg)) rotateY(var(--tilt-y, -2deg))
     translateY(-6px) translateZ(18px);
-  border-color: #ff9ccb;
+  border-color: var(--primary);
   box-shadow:
-    0 28px 70px rgb(255 156 203 / 0.3),
-    0 10px 30px rgb(43 23 34 / 0.08);
+    0 28px 70px var(--shadow-glow),
+    0 10px 30px rgb(0 0 0 / 0.08);
 }
 
 .project-card-3d:hover::before {
@@ -118,7 +171,7 @@ select {
 }
 
 .hero-photo-orbit:hover {
-  box-shadow: 0 34px 90px rgb(255 156 203 / 0.48);
+  box-shadow: 0 34px 90px var(--shadow-glow);
   transform: translateY(-4px) perspective(900px) rotateX(3deg) rotateY(-3deg);
 }
 
@@ -131,15 +184,15 @@ select {
 
 .creative-mood-card:hover {
   transform: translateY(-4px);
-  border-color: #ff9ccb;
-  box-shadow: 0 22px 60px rgb(255 156 203 / 0.32);
+  border-color: var(--primary);
+  box-shadow: 0 22px 60px var(--shadow-glow);
 }
 
 .hero-photo-glow {
   background:
     radial-gradient(circle at 30% 25%, rgb(255 255 255 / 0.95), transparent 22%),
     radial-gradient(circle at 72% 30%, rgb(189 233 255 / 0.8), transparent 24%),
-    radial-gradient(circle at 50% 82%, rgb(255 156 203 / 0.72), transparent 28%);
+    radial-gradient(circle at 50% 82%, var(--shadow-glow), transparent 28%);
   filter: blur(12px);
   opacity: 0.85;
   animation: hero-glow-pulse 3.6s ease-in-out infinite;
@@ -198,7 +251,7 @@ select {
 }
 
 .custom-scrollbar {
-  scrollbar-color: #ff9ccb rgb(255 255 255 / 0.16);
+  scrollbar-color: var(--primary) rgb(255 255 255 / 0.16);
   scrollbar-width: thin;
 }
 
@@ -212,9 +265,9 @@ select {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  border: 2px solid rgb(43 23 34 / 1);
+  border: 2px solid var(--foreground-dark);
   border-radius: 999px;
-  background: #ff9ccb;
+  background: var(--primary);
 }
 
 .butterfly-loader {
@@ -296,8 +349,8 @@ select {
   width: 0.8rem;
   height: 0.8rem;
   border-radius: 999px;
-  background: #ff2f6d;
-  box-shadow: 0 0 0 0 rgb(255 47 109 / 0.55);
+  background: var(--primary-text);
+  box-shadow: 0 0 0 0 var(--primary);
   animation: recording-pulse 1.1s ease-out infinite;
 }
 
@@ -313,7 +366,7 @@ select {
   width: 0.25rem;
   height: 0.45rem;
   border-radius: 999px;
-  background: #ff9ccb;
+  background: var(--primary);
   animation: recording-wave 0.8s ease-in-out infinite;
 }
 
@@ -331,11 +384,11 @@ select {
 
 @keyframes recording-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgb(255 47 109 / 0.55);
+    box-shadow: 0 0 0 0 var(--primary);
   }
 
   100% {
-    box-shadow: 0 0 0 0.7rem rgb(255 47 109 / 0);
+    box-shadow: 0 0 0 0.7rem transparent;
   }
 }
 
